@@ -1,0 +1,787 @@
+<template>
+  <v-row class="pb-12">
+    <v-overlay :value="loading" class="text-center">
+      <v-progress-circular
+        :size="100"
+        :width="10"
+        color="primary"
+        indeterminate
+      ></v-progress-circular>
+    </v-overlay>
+
+    <v-col md="9">
+        <v-card
+          elevation="5"
+        >
+          <v-progress-linear
+            v-if="rendering"
+            stream
+            :buffer-value="renderProgress+10"
+            :value="renderProgress"
+            color="primary"
+          ></v-progress-linear>
+          <v-card-text>
+            <v-carousel
+              hide-delimiters
+              height="650"
+              v-model="carouselFrame"
+              :continuous=false
+              @change="updateCarouselFrame"
+            >
+              <v-carousel-item
+                v-for="(frameJob, i) in frameJobs"
+                :key="i"
+              >
+                <v-img
+                  :src="getFrameJobRenderSrc(frameJob.renderFrame)"
+                  max-height="650"
+                >
+                </v-img>
+              </v-carousel-item>
+            </v-carousel>
+
+            <div class="text-center mt-2">
+              <v-row justify="center">
+                <v-col align="right">
+                  <v-btn
+                    @click="framePrev10"
+                    v-if="frameJobs.length > 10"
+                    class="mt-3"
+                  >
+                    <v-icon>mdi-rewind-10</v-icon>
+                  </v-btn>
+                </v-col>
+                <v-col cols="1">
+                <v-text-field
+                  hide-details
+                  :rules="frameRules"
+                  label="Frame"
+                  v-model="directFrame"
+                  class="centered-input"
+                  single-line
+                  @change="updateDirectFrame"
+                ></v-text-field>
+                </v-col>
+                <v-col align="left">
+                  <v-btn
+                    @click="frameNext10"
+                    v-if="frameJobs.length > 10"
+                    class="mt-3"
+                  >
+                    <v-icon>mdi-fast-forward-10</v-icon>
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </div>
+            <v-fab-transition>
+              <v-btn
+                v-show="!this.rendering"
+                @click="getCurrentFrameRenderSrc()"
+                color="green"
+                dark
+                absolute
+                bottom
+                right
+                fab
+                target="_blank"
+              >
+                <v-icon>mdi-download</v-icon>
+              </v-btn>
+            </v-fab-transition>
+          </v-card-text>
+        </v-card>
+    </v-col>
+
+    <v-col md="3">
+      <v-card
+        elevation="5"
+        >
+        <v-list-item class="mb-3">
+          <v-list-item-content>
+            <v-list-item-title class="text-h5">
+              {{jobTitle}}
+              <v-chip
+                v-if="job.status == 'RENDERING'"
+                class="ma-1 mb-1 float-right"
+                color="blue"
+                text-color="white"
+              >
+                {{titleize(job.status)}}
+              </v-chip>
+              <v-chip
+                v-else-if="job.status !== undefined && job.status === 'ERROR'"
+                class="ma-1 mb-1 float-right"
+                color="red"
+                text-color="white"
+              >
+                {{titleize(job.status)}}
+              </v-chip>
+              <v-chip
+                v-else-if="job.status === 'QUEUED'"
+                class="ma-1 mb-1 float-right"
+                color="grey"
+                text-color="white"
+              >
+                {{titleize(job.status)}}
+              </v-chip>
+            </v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+
+        <v-list class="transparent">
+          <v-list-item>
+            <v-list-item-title>Engine</v-list-item-title>
+            <v-list-item-subtitle class="text-right">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-icon
+                    class="mr-2"
+                    v-if="renderUseGPU"
+                    dark
+                    v-bind="attrs"
+                    v-on="on"
+                    color="green"
+                  >
+                    mdi-expansion-card
+                  </v-icon>
+                  <v-icon
+                    color="blue"
+                    class="mr-2"
+                    v-else
+                    dark
+                    v-bind="attrs"
+                    v-on="on"
+                  >
+                    mdi-memory
+                  </v-icon>
+                </template>
+                <span v-if="renderUseGPU">GPU</span>
+                <span v-else>CPU</span>
+              </v-tooltip>
+            </v-list-item-subtitle>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-title>Frames</v-list-item-title>
+            <v-list-item-subtitle class="text-right">
+              <v-chip
+                small
+                class="ma-2"
+                color="grey darken-1"
+                text-color="white"
+              >
+                {{this.frameJobs.length}}
+              </v-chip>
+            </v-list-item-subtitle>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-title>Samples</v-list-item-title>
+            <v-list-item-subtitle class="text-right">
+              <v-chip
+                small
+                class="ma-2"
+                color="grey darken-1"
+                text-color="white"
+              >
+                {{renderSamples}}
+              </v-chip>
+            </v-list-item-subtitle>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-title>Resolution</v-list-item-title>
+            <v-list-item-subtitle class="text-right">
+              <v-chip
+                small
+                class="ma-2"
+                color="grey darken-1"
+                text-color="white"
+              >
+                {{resolutionX}} x {{resolutionY}}
+              </v-chip>
+            </v-list-item-subtitle>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-title>Resolution Scale</v-list-item-title>
+            <v-list-item-subtitle class="text-right">
+              <v-chip
+                small
+                class="ma-2"
+                color="grey darken-1"
+                text-color="white"
+              >
+                {{resolutionScale}}%
+              </v-chip>
+            </v-list-item-subtitle>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-title>Render Slices</v-list-item-title>
+            <v-list-item-subtitle class="text-right">
+              <v-chip
+                small
+                class="ma-2"
+                color="grey darken-1"
+                text-color="white"
+              >
+                {{renderSlices}}
+              </v-chip>
+            </v-list-item-subtitle>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-title>Queue Time</v-list-item-title>
+            <v-list-item-subtitle class="text-right">
+              <v-chip
+                v-if="job.status === 'FINISHED'"
+                small
+                class="ma-2"
+		color="grey darken-1"
+                text-color="white"
+              >
+                {{queueTime}}
+              </v-chip>
+              <v-chip
+                v-else
+                small
+                class="ma-2"
+                color="primary"
+                text-color="white"
+              >
+                In Progress
+              </v-chip>
+            </v-list-item-subtitle>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-title>Render Time</v-list-item-title>
+            <v-list-item-subtitle class="text-right">
+              <v-chip
+                v-if="job.status === 'FINISHED'"
+                small
+                class="ma-2"
+                :color="job.status === 'ERROR' ? 'red': 'green'"
+                text-color="white"
+              >
+                {{jobRenderTime}}
+              </v-chip>
+              <v-chip
+                v-else
+                small
+                class="ma-2"
+                color="primary"
+                text-color="white"
+              >
+                In Progress
+              </v-chip>
+            </v-list-item-subtitle>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-title>Job Time</v-list-item-title>
+            <v-list-item-subtitle class="text-right">
+              <v-chip
+                v-if="job.status === 'FINISHED'"
+                small
+                class="ma-2"
+                :color="job.status === 'ERROR' ? 'red': 'green'"
+                text-color="white"
+              >
+                {{jobTime}}
+              </v-chip>
+              <v-chip
+                v-else
+                small
+                class="ma-2"
+                color="primary"
+                text-color="white"
+              >
+                In Progress
+              </v-chip>
+            </v-list-item-subtitle>
+          </v-list-item>
+        </v-list>
+
+        <v-card-actions>
+          <v-spacer />
+            <template v-if="job.status === 'FINISHED' || job.status === 'ERROR'">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                      dark
+                      color="primary lighten-2"
+                      class="ml-1 mr-1"
+                      @click="startGetJobArchive"
+                    >
+                    <v-icon
+                      v-bind="attrs"
+                      v-on="on"
+                      dark
+                      >
+                        mdi-folder-zip
+                    </v-icon>
+                  </v-btn>
+                </template>
+                <span>Download Job Archive</span>
+              </v-tooltip>
+            </template>
+
+            <template v-if="job.status === 'FINISHED' || job.status === 'ERROR'">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                      dark
+                      color="grey"
+                      class="ml-1 mr-1"
+                      @click="showRenderLogDialog = true"
+                    >
+                    <v-icon
+                      v-bind="attrs"
+                      v-on="on"
+                      dark
+                      >
+                        mdi-text-box-outline
+                    </v-icon>
+                  </v-btn>
+                </template>
+                <span>View Render Logs</span>
+              </v-tooltip>
+            </template>
+
+            <template v-if="job.status === 'FINISHED' || job.status === 'ERROR'">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                      dark
+                      color="red"
+                      class="ml-1 mr-1"
+                      @click="showDeleteJobDialog = true"
+                    >
+                    <v-icon
+                      v-bind="attrs"
+                      v-on="on"
+                      dark
+                      >
+                        mdi-trash-can
+                    </v-icon>
+                  </v-btn>
+                </template>
+                <span>Delete Job</span>
+              </v-tooltip>
+            </template>
+        </v-card-actions>
+      </v-card>
+
+    </v-col>
+
+    <v-dialog
+      scrollable
+      v-model="showRenderLogDialog"
+      width="75%"
+    >
+      <v-card>
+        <v-card-title class="grey darken-1">
+          Log: {{jobTitle}} (Frame: {{this.currentFrame}})
+        </v-card-title>
+
+        <v-card-text class="mt-5">
+          <div v-if="renderSliceLogs.length === 0"v-html="renderLog"></div>
+          <template v-else>
+            <v-tabs>
+              <v-tab v-for="(log, i) in renderSliceLogs" :key="i">Slice {{log.slice}}</v-tab>
+              <v-tab-item v-for="log in renderSliceLogs">
+                <v-card flat>
+                  <v-card-text v-html="formatRenderLog(log.log)"></v-card-text>
+                </v-card>
+              </v-tab-item>
+            </v-tabs>
+          </template>
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            @click="showRenderLogDialog = false"
+          >
+            Close
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog
+      v-model="showDeleteJobDialog"
+      width="500"
+    >
+      <v-card>
+        <v-card-title class="grey darken-1">
+          Delete {{jobTitle}}
+        </v-card-title>
+
+        <v-card-text class="mt-5">
+            <div class="text-center">
+            Are you sure you want to delete {{jobTitle}}?
+            </div>
+            <div class="text-center">
+              (Job: {{job.id}})
+            </div>
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+            <v-btn
+              color="red"
+              @click="deleteJob(job.id)"
+            >
+              Delete
+            </v-btn>
+          <v-btn
+            @click="showDeleteJobDialog = false"
+          >
+            Close
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+  </v-row>
+</template>
+
+<style scoped>
+  .centered-input >>> input {
+    text-align: center
+  }
+</style>
+
+<script>
+import axios from "axios";
+
+export default {
+  props: ['id'],
+  components: {},
+  data: () => ({
+    job: {},
+    loading: true,
+    jobTitle: '',
+    jobImage: '',
+    renderFrame: '',
+    renderEndFrame: -1,
+    renderSamples: '',
+    resolutionX: '',
+    resolutionY: '',
+    resolutionScale: '',
+    renderSlices: null,
+    queueTime: '',
+    jobTime: '',
+    renderTime: '',
+    currentFrame: 1,
+    carouselFrame: 0,
+    directFrame: 1,
+    snackbar: false,
+    rendering: true,
+    renderUseGPU: false,
+    text: '',
+    timer: '',
+    frameJobs: [],
+    frameRenderUrls: [],
+    renderProgress: 0,
+    renderLog: '',
+    renderSliceLogs: [],
+    jobArchivePending: false,
+    jobArchiveTimer: '',
+    showRenderLogDialog: false,
+    showDeleteJobDialog: false,
+    frameRules: [
+      v => (v != '') || 'Frame cannot be empty'
+    ],
+    color: 'error',
+  }),
+  methods: {
+    humanTime(ms) {
+      const delim = ''
+      const showWith0 = value => (value < 10 ? `0${value}` : value)
+      const hours = showWith0(Math.floor((ms / (1000 * 60 * 60)) % 60))
+      const minutes = showWith0(Math.floor((ms / (1000 * 60)) % 60))
+      const seconds = showWith0(Math.floor((ms / 1000) % 60))
+      return `${parseInt(hours) ? `${hours}h${delim}` : ""}${minutes}m${delim}${seconds}s`
+    },
+    titleize(s) {
+      return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    },
+    loadJob() {
+      axios.get(this.$apiHost + '/api/v1/jobs/'+this.id)
+        .then(response => {
+          this.job = response.data.job
+          this.jobTitle = this.job.request.name
+          this.renderSamples = this.job.request.renderSamples
+          this.renderEndFrame = this.job.request.renderEndFrame
+          this.renderUseGPU = this.job.request.renderUseGpu
+          this.renderSlices = this.job.request.renderSlices
+          this.resolutionX = this.job.request.resolutionX
+          this.resolutionY = this.job.request.resolutionY
+          this.resolutionScale = this.job.request.resolutionScale
+          var created = new Date(this.job.createdAt)
+          var started = new Date(this.job.startedAt)
+          var finished = new Date(this.job.finishedAt)
+          this.queueTime = this.humanTime(started - created)
+          this.jobTime = this.humanTime(finished - started)
+          this.loading = false
+          this.cacheKey = this.job.finishedAt
+          this.frameJobs = this.job.frameJobs
+          // convert render time seconds
+          if (this.job.duration !== null) {
+            var renderTimeMs = parseInt(this.job.duration.replace('s', '')) * 1000
+            this.jobRenderTime = this.humanTime(renderTimeMs)
+          }
+          if (this.job.status === 'FINISHED') {
+            this.rendering = false
+            this.cancelLoadJob()
+          }
+          this.loadFrameJobRenders()
+	        this.currentFrame = parseInt(this.job.request.renderStartFrame)
+	        this.directFrame = this.currentFrame
+          // render progress
+          if (this.job.frameJobs.length > 1) {
+            var x
+            var renderedFrames = 0
+            for (x=0; x<this.job.frameJobs.length; x++) {
+              if (this.job.frameJobs[x].status === 'FINISHED') {
+                renderedFrames += 1
+              }
+            }
+            this.renderProgress = (renderedFrames / this.job.frameJobs.length * 100)
+          } else { // show slice progress
+            var x
+            var renderedSlices = 0
+            var frameJob = this.job.frameJobs[0]
+            for (x=0; x<frameJob.sliceJobs.length; x++) {
+              if (frameJob.sliceJobs[x].status === 'FINISHED') {
+                renderedSlices += 1
+              }
+            }
+            this.renderProgress = (renderedSlices / frameJob.sliceJobs.length * 100)
+          }
+        })
+        .catch(err => {
+          var msg
+          if (err.response != null) {
+            msg = err.response.data
+          } else {
+            msg = err
+          }
+          this.loading = false
+	        this.$root.$emit('showError', 'Error loading job: ' + msg)
+        })
+    },
+    getCurrentFrameRenderSrc() {
+      axios.get(this.$apiHost + '/api/v1/jobs/' + this.job.id + '/latest-render/' + this.currentFrame + '?ttl=3600s')
+        .then(resp => {
+          window.open(resp.data.url)
+        })
+    },
+    getFrameJobRenderSrc(frame) {
+      var x
+      for (x=0; x<this.frameRenderUrls.length; x++) {
+        var r = this.frameRenderUrls[x]
+        if (r.frame === frame) {
+          return r.url
+        }
+      }
+      return ""
+    },
+    loadFrameJobRenders() {
+      var x
+      var promises = []
+      var totalFrames = parseInt(this.job.request.renderEndFrame) - parseInt(this.job.request.renderStartFrame)
+      var startFrame = parseInt(this.job.request.renderStartFrame)
+      var endFrame = parseInt(this.job.request.renderEndFrame)
+      var frameRenderUrls = []
+      for (x=startFrame; x<=endFrame; x++) {
+        promises.push(
+          axios.get(this.$apiHost + '/api/v1/jobs/' + this.job.id + '/latest-render/'+ x + '?ttl=3600s')
+            .then(resp => {
+              frameRenderUrls.push(resp.data)
+            })
+            .catch(err => {
+              var msg
+              if (err.response != null) {
+                msg = err.response.data
+              } else {
+                msg = err
+              }
+	            this.$root.$emit('showError', 'Error getting job latest render: ' + msg)
+          }))
+        }
+        Promise.all(promises).then(() =>
+          this.frameRenderUrls = frameRenderUrls,
+        )
+    },
+    loadRenderLog() {
+      if (this.job.status !== 'FINISHED' && this.job.status !== 'ERROR') {
+        return
+      }
+      axios.get(this.$apiHost + '/api/v1/renders/' + this.job.id + '/logs/' + this.currentFrame)
+        .then(resp => {
+          // reset
+          this.renderLog = resp.data.renderLog.log.replaceAll('\n', '<br />')
+        })
+        .catch(err => {
+          var msg
+          if (err.response != null) {
+            msg = err.response.data
+          } else {
+            msg = err
+          }
+          this.renderLog = 'Error loading job log: ' + msg
+        })
+    },
+    formatRenderLog(v) {
+      return v.replaceAll('\n', '<br />')
+    },
+    loadRenderSliceLogs() {
+      if (this.job.status !== 'FINISHED' && this.job.status !== 'ERROR') {
+        return
+      }
+      var idx = parseInt(this.currentFrame) - parseInt(this.job.request.renderStartFrame)
+      if (this.job.frameJobs[idx].sliceJobs.length == 0) {
+        return
+      }
+      var x
+      let promises = []
+      let renderSliceLogs = []
+      for (x=0; x<this.job.frameJobs[idx].sliceJobs.length; x++) {
+        var slice = this.job.frameJobs[idx].sliceJobs[x]
+	      // calculate log frame by render start frame offset
+	      var logFrame = this.currentFrame
+        promises.push(
+          axios.get(this.$apiHost + '/api/v1/renders/' + this.job.id + '/logs/' + logFrame + '?slice=' + x)
+            .then(resp => {
+              renderSliceLogs.push(resp.data.renderLog)
+            })
+            .catch(err => {
+              var msg
+              if (err.response != null) {
+                msg = err.response.data
+              } else {
+                msg = err
+              }
+              this.renderSliceLogs[x] = 'Error loading job slice log: ' + msg
+          }))
+      }
+
+      Promise.all(promises).then(() =>
+        renderSliceLogs.sort((a,b) => (a.slice > b.slice) ? 1 : ((b.slice < a.slice) ? -1 : 0)),
+      )
+      this.renderSliceLogs = renderSliceLogs
+    },
+    deleteJob(id) {
+      axios.delete(this.$apiHost + '/api/v1/jobs/' + id)
+        .then( resp => {
+          this.$router.push('/jobs')
+        })
+        .catch(err => {
+          if (err.response != null) {
+            this.text = err.response.data
+          } else {
+            this.text = err
+          }
+          this.snackbar = true
+        })
+        this.showDeleteJobDialog = false
+    },
+    updateCarouselFrame(v) {
+      this.carouselFrame = v
+      var offset = parseInt(this.job.request.renderStartFrame)
+      this.updateCurrentFrame(v + offset)
+    },
+    updateCurrentFrame(v) {
+      this.currentFrame = parseInt(v)
+      this.directFrame = this.currentFrame
+    },
+    updateDirectFrame(v) {
+      var offset = 0
+      if (v < parseInt(this.job.request.renderStartFrame)) {
+        v = parseInt(this.job.request.renderStartFrame)
+      }
+      if (v > parseInt(this.job.request.renderEndFrame)) {
+        v = parseInt(this.job.request.renderEndFrame)
+      }
+      var offset = parseInt(this.job.request.renderStartFrame)
+      this.updateCarouselFrame(v - offset)
+      this.updateCurrentFrame(v)
+    },
+    framePrev10() {
+      var frame = (parseInt(this.carouselFrame) + parseInt(this.job.request.renderStartFrame)) - 10
+      var cframe = parseInt(this.carouselFrame) - 10
+      if (frame < parseInt(this.job.request.renderStartFrame)) {
+        frame = this.job.request.renderStartFrame
+	cframe = 0
+      }
+      this.updateCurrentFrame(frame)
+      this.carouselFrame = cframe
+    },
+    frameNext10() {
+      var frame = (parseInt(this.carouselFrame) + parseInt(this.job.request.renderStartFrame)) + 10
+      var cframe = parseInt(this.carouselFrame) + 10
+      if (frame > parseInt(this.job.request.renderEndFrame)) {
+        frame = this.job.request.renderEndFrame
+	cframe = parseInt(this.frameJobs.length) - 1
+      }
+      this.updateCurrentFrame(frame)
+      this.carouselFrame = cframe
+    },
+    startGetJobArchive() {
+      this.getJobArchive()
+      this.loading = true
+      this.jobArchiveTimer = setInterval(this.getJobArchive, 5000)
+    },
+    getJobArchive() {
+      if (this.job.status !== 'FINISHED') {
+        return
+      }
+      this.loading = true
+      axios.get(this.$apiHost + '/api/v1/jobs/' + this.job.id + '/archive')
+        .then( resp => {
+          var url = resp.data
+          if (url === "") {
+            if (!this.jobArchivePending) {
+	            this.$root.$emit('showInfo', 'Generating job archive. This can take a few minutes depending on project size. You can refresh and the archive will be generated in the background.')
+              this.jobArchivePending = true
+            }
+            return
+          }
+          clearInterval(this.jobArchiveTimer)
+          this.loading = false
+          this.jobArchivePending = false
+          window.location.href = url
+        })
+        .catch(err => {
+          this.loading = false
+          var msg
+          if (err.response != null) {
+            msg = err.response.data
+          } else {
+            msg = err
+          }
+	        this.$root.$emit('showError', 'Error getting job archive: ' + msg)
+        })
+    },
+    cancelLoadJob() {
+      clearInterval(this.timer)
+    }
+  },
+  created () {
+    this.loadJob()
+    this.timer = setInterval(this.loadJob, 10000)
+  },
+  beforeDestroy() {
+    this.cancelLoadJob()
+  },
+  watch: {
+    showRenderLogDialog(v) {
+      if (v) {
+        this.loadRenderLog()
+        this.loadRenderSliceLogs()
+      }
+    },
+  }
+}
+</script>

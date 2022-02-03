@@ -1,0 +1,41 @@
+<template>
+  <v-app>
+    <v-main>
+      <v-container fluid>
+        <NavBar v-bind:appConfig="appConfig" v-bind:userConfig="userConfig" />
+        <Jobs v-bind:appConfig="appConfig"  v-bind:userConfig="userConfig" />
+        <Footer v-bind:appConfig="appConfig" v-bind:userConfig="userConfig" />
+      </v-container>
+    </v-main>
+  </v-app>
+</template>
+
+<script>
+import NavBar from '../components/NavBar';
+import Jobs from '../components/Jobs';
+import Footer from '../components/Footer';
+
+export default {
+  data: () => ({
+    appConfig: {},
+    userConfig: {
+      account: {},
+    },
+  }),
+  components: {
+    NavBar,
+    Jobs,
+    Footer,
+  },
+  methods: {
+    loadAppConfig: async function() {
+      this.appConfig = await this.$getAppConfig()
+      this.userConfig = await this.$getUserConfig()
+    },
+  },
+  created () {
+    this.loadAppConfig()
+    this.$vuetify.theme.dark = true
+  },
+};
+</script>
