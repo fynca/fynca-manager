@@ -36,7 +36,18 @@
         dense
         elevation="1"
     >
-    <v-toolbar-title><router-link tag="span" class="link" :to="{name: 'main'}">Fynca</router-link></v-toolbar-title>
+    <v-toolbar-title class="logo-font">
+      <router-link tag="span" class="link" :to="{name: 'main'}">
+      <v-row dense no-gutters>
+        <v-col>
+          <v-img src="/img/fynca-32.png" width="24" class="pt-2" />
+        </v-col>
+        <v-col class="d-none d-md-flex">
+          <span class="ml-2">Fynca</span>
+        </v-col>
+      </v-row>
+      </router-link>
+    </v-toolbar-title>
     <v-btn
       small
       outlined
@@ -197,11 +208,30 @@
               min="1"
             ></v-slider>
 
-            <v-checkbox
-              v-model="renderUseGPU"
-              label="Use GPU"
-              hint="Enable GPU (if available) for rendering"
-            ></v-checkbox>
+            <v-row>
+              <v-col
+                cols="12"
+                sm="6"
+              >
+                <v-select
+                  v-model="selectedRenderEngine"
+                  :items="renderEngines"
+                  label="Render Engine"
+                ></v-select>
+              </v-col>
+
+              <v-col
+                cols="12"
+                sm="6"
+              >
+                <v-checkbox
+                  class="ml-14"
+                  v-model="renderUseGPU"
+                  label="Use GPU"
+                  hint="Enable GPU (if available) for rendering"
+                ></v-checkbox>
+              </v-col>
+            </v-row>
 
             <v-slider
               v-model="renderSlices"
@@ -323,6 +353,11 @@ export default {
     nameRules: [
       v => !!v || 'Name is required'
     ],
+    renderEngines: [
+      'Cycles',
+      'EEVEE',
+    ],
+    selectedRenderEngine: 'Cycles',
     renderSamples: 100,
     resolutionScale: 100,
     renderStartFrame: 1,
@@ -392,6 +427,7 @@ export default {
       this.renderUseGPU = false
       this.renderSlices = 0
       this.projectFile = null
+      this.selectedRenderEngine = 'Cycles'
       this.showUploadingOverlay = false
     },
     queueRenderJob() {
@@ -409,6 +445,7 @@ export default {
       formData.append("resolutionScale", this.resolutionScale)
       formData.append("renderStartFrame", this.renderStartFrame)
       formData.append("renderEndFrame", this.renderEndFrame)
+      formData.append("renderEngine", this.selectedRenderEngine)
       formData.append("renderUseGPU", this.renderUseGPU)
       formData.append("renderSlices", this.renderSlices)
       formData.append("project", this.projectFile)

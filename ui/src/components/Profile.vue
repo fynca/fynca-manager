@@ -1,8 +1,11 @@
 <template>
   <v-row>
-    <v-col />
+    <v-col class="d-none d-md-flex"/>
     <v-col
-      cols="6"
+      sm="12"
+      md="6"
+      lg="6"
+      xl="6"
     >
       <v-overlay
         :value="showUpdatingOverlay"
@@ -103,7 +106,9 @@
 
       </template>
     </v-col>
-    <v-col />
+
+    <v-col class="d-none d-md-flex"/>
+
     <v-dialog
       scrollable
       v-model="showChangePasswordDialog"

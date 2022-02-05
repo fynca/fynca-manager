@@ -36,6 +36,19 @@ Vue.filter('gravatar', function(v, size) {
   return `https://www.gravatar.com/avatar/${hash}` + '?s=' + size;
 });
 
+Vue.filter('toTitleCase', function(v) {
+  return v.replace(
+    /\w\S*/g,
+    function(txt) {
+      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    }
+  );
+});
+
+Vue.filter('formatRenderEngineName', function(v) {
+  return v.replace('BLENDER_', '');
+});
+
 // format bytes
 Vue.filter('formatBytes', function (num) {
   if (typeof num !== 'number' || isNaN(num)) {
@@ -73,7 +86,6 @@ axios.interceptors.response.use(function (response) {
   return response;
 }, function (err) {
   var r = err.response;
-    console.log(err)
   if (r.status === 401 || r.status === 403) {
     router.push({name: "login"});
     return
@@ -101,7 +113,6 @@ Vue.prototype.$getAppConfig = function() {
         msg = err
       }
       this.loading = false
-      console.log(err)
     });
 }
 
@@ -118,7 +129,6 @@ Vue.prototype.$getUserConfig = function() {
         msg = err
       }
       this.loading = false
-      console.log(err)
     });
 }
 

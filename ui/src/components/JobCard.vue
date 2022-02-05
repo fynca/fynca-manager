@@ -100,6 +100,12 @@
         <v-list-item class="mb-n4">
           <v-list-item-title>Engine</v-list-item-title>
           <v-list-item-subtitle>
+            {{job.request.renderEngine | formatRenderEngineName | toTitleCase }}
+          </v-list-item-subtitle>
+        </v-list-item>
+        <v-list-item class="mb-n4">
+          <v-list-item-title>Device</v-list-item-title>
+          <v-list-item-subtitle>
             <v-tooltip bottom>
               <template v-slot:activator="{ on, attrs }">
                 <v-icon

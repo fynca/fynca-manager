@@ -132,6 +132,13 @@
           <v-list-item>
             <v-list-item-title>Engine</v-list-item-title>
             <v-list-item-subtitle class="text-right">
+              <span>{{renderEngine | formatRenderEngineName | toTitleCase}}</span>
+            </v-list-item-subtitle>
+          </v-list-item>
+
+          <v-list-item>
+            <v-list-item-title>Device</v-list-item-title>
+            <v-list-item-subtitle class="text-right">
               <v-tooltip bottom>
                 <template v-slot:activator="{ on, attrs }">
                   <v-icon
@@ -383,7 +390,7 @@
           <template v-else>
             <v-tabs>
               <v-tab v-for="(log, i) in renderSliceLogs" :key="i">Slice {{log.slice}}</v-tab>
-              <v-tab-item v-for="log in renderSliceLogs">
+              <v-tab-item v-for="(log, i) in renderSliceLogs" :key="i">
                 <v-card flat>
                   <v-card-text v-html="formatRenderLog(log.log)"></v-card-text>
                 </v-card>
@@ -462,6 +469,7 @@ export default {
     loading: true,
     jobTitle: '',
     jobImage: '',
+    renderEngine: '',
     renderFrame: '',
     renderEndFrame: -1,
     renderSamples: '',
@@ -512,6 +520,7 @@ export default {
           this.job = response.data.job
           this.jobTitle = this.job.request.name
           this.renderSamples = this.job.request.renderSamples
+          this.renderEngine = this.job.request.renderEngine
           this.renderEndFrame = this.job.request.renderEndFrame
           this.renderUseGPU = this.job.request.renderUseGpu
           this.renderSlices = this.job.request.renderSlices
@@ -549,11 +558,11 @@ export default {
             }
             this.renderProgress = (renderedFrames / this.job.frameJobs.length * 100)
           } else { // show slice progress
-            var x
+            var y
             var renderedSlices = 0
             var frameJob = this.job.frameJobs[0]
-            for (x=0; x<frameJob.sliceJobs.length; x++) {
-              if (frameJob.sliceJobs[x].status === 'FINISHED') {
+            for (y=0; y<frameJob.sliceJobs.length; y++) {
+              if (frameJob.sliceJobs[y].status === 'FINISHED') {
                 renderedSlices += 1
               }
             }
@@ -590,7 +599,7 @@ export default {
     loadFrameJobRenders() {
       var x
       var promises = []
-      var totalFrames = parseInt(this.job.request.renderEndFrame) - parseInt(this.job.request.renderStartFrame)
+      //var totalFrames = parseInt(this.job.request.renderEndFrame) - parseInt(this.job.request.renderStartFrame)
       var startFrame = parseInt(this.job.request.renderStartFrame)
       var endFrame = parseInt(this.job.request.renderEndFrame)
       var frameRenderUrls = []

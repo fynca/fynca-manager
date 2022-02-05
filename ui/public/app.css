@@ -7,3 +7,13 @@ a {
 tr:hover:not(.v-table__expanded__content) {
   background: transparent !important;
 }
+
+.logo-font {
+    font-family: 'Raleway';
+}
+
+@font-face {
+  font-family: 'Raleway';
+  src: url(/fonts/Raleway-Medium.ttf);
+  src: url('/fonts/Raleway-Medium.ttf')  format('truetype'), /* Safari, Android, iOS */
+}

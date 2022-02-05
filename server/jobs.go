@@ -3,9 +3,11 @@ package server
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	api "git.underland.io/ehazlett/fynca/api/services/render/v1"
@@ -224,6 +226,12 @@ func (s *Server) jobQueueHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	renderEngine, err := parseRenderEngine(r.FormValue("renderEngine"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	jobRequest := &api.JobRequest{
 		Name:             r.FormValue("name"),
 		ResolutionX:      int64(resX),
@@ -234,6 +242,7 @@ func (s *Server) jobQueueHandler(w http.ResponseWriter, r *http.Request) {
 		RenderSamples:    int64(renderSamples),
 		RenderUseGPU:     renderUseGPU,
 		RenderSlices:     int64(renderSlices),
+		RenderEngine:     renderEngine,
 	}
 
 	projectFile, _, err := r.FormFile("project")
@@ -346,4 +355,14 @@ func (s *Server) jobLogHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(resp.JobLog.Log))
+}
+
+func parseRenderEngine(e string) (api.RenderEngine, error) {
+	switch strings.ToLower(e) {
+	case "cycles":
+		return api.RenderEngine_CYCLES, nil
+	case "eevee":
+		return api.RenderEngine_BLENDER_EEVEE, nil
+	}
+	return api.RenderEngine_UNKNOWN, fmt.Errorf("unsupported render engine: %q", e)
 }
