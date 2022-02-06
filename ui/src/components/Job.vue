@@ -44,9 +44,17 @@
               <v-row justify="center">
                 <v-col align="right">
                   <v-btn
+                    @click="framePrev100"
+                    v-if="frameJobs.length > 100"
+                    class="mt-3"
+                  >
+                    <v-icon>mdi-rewind</v-icon>
+                  </v-btn>
+
+                  <v-btn
                     @click="framePrev10"
                     v-if="frameJobs.length > 10"
-                    class="mt-3"
+                    class="mt-3 ml-1"
                   >
                     <v-icon>mdi-rewind-10</v-icon>
                   </v-btn>
@@ -69,6 +77,14 @@
                     class="mt-3"
                   >
                     <v-icon>mdi-fast-forward-10</v-icon>
+                  </v-btn>
+
+                  <v-btn
+                    @click="frameNext100"
+                    v-if="frameJobs.length > 100"
+                    class="mt-3 ml-1"
+                  >
+                    <v-icon>mdi-fast-forward</v-icon>
                   </v-btn>
                 </v-col>
               </v-row>
@@ -489,7 +505,7 @@ export default {
     text: '',
     timer: '',
     frameJobs: [],
-    frameRenderUrls: [],
+    frameRenderUrls: new Map(),
     renderProgress: 0,
     renderLog: '',
     renderSliceLogs: [],
@@ -500,6 +516,8 @@ export default {
     frameRules: [
       v => (v != '') || 'Frame cannot be empty'
     ],
+    maxFrames: 15,
+    currentLoadFrameOffset: 0,
     color: 'error',
   }),
   methods: {
@@ -544,9 +562,9 @@ export default {
             this.rendering = false
             this.cancelLoadJob()
           }
-          this.loadFrameJobRenders()
-	        this.currentFrame = parseInt(this.job.request.renderStartFrame)
-	        this.directFrame = this.currentFrame
+          this.currentFrame = parseInt(this.job.request.renderStartFrame)
+	  this.directFrame = this.currentFrame
+          this.loadFrameJobRenders(this.currentFrame)
           // render progress
           if (this.job.frameJobs.length > 1) {
             var x
@@ -587,27 +605,30 @@ export default {
         })
     },
     getFrameJobRenderSrc(frame) {
-      var x
-      for (x=0; x<this.frameRenderUrls.length; x++) {
-        var r = this.frameRenderUrls[x]
-        if (r.frame === frame) {
-          return r.url
-        }
-      }
-      return ""
+      return this.frameRenderUrls.get(frame)
     },
-    loadFrameJobRenders() {
+    loadFrameJobRenders(v) {
       var x
+      var c = 0
       var promises = []
-      //var totalFrames = parseInt(this.job.request.renderEndFrame) - parseInt(this.job.request.renderStartFrame)
       var startFrame = parseInt(this.job.request.renderStartFrame)
       var endFrame = parseInt(this.job.request.renderEndFrame)
-      var frameRenderUrls = []
-      for (x=startFrame; x<=endFrame; x++) {
+      var targetFrame = parseInt(v)
+      // skip if already loaded
+      if (this.frameRenderUrls.has(targetFrame.toString())) {
+        return
+      }
+      this.loading = true
+      for (x=targetFrame; x<=endFrame; x++) {
+        if (c > this.maxFrames) {
+          this.currentLoadFrameOffset = x - 1
+          break
+        }
+        c++
         promises.push(
           axios.get(this.$apiHost + '/api/v1/jobs/' + this.job.id + '/latest-render/'+ x + '?ttl=3600s')
             .then(resp => {
-              frameRenderUrls.push(resp.data)
+              this.frameRenderUrls.set(resp.data.frame, resp.data.url)
             })
             .catch(err => {
               var msg
@@ -619,9 +640,9 @@ export default {
 	            this.$root.$emit('showError', 'Error getting job latest render: ' + msg)
           }))
         }
-        Promise.all(promises).then(() =>
-          this.frameRenderUrls = frameRenderUrls,
-        )
+        Promise.all(promises).then(() => {
+          this.loading = false
+        })
     },
     loadRenderLog() {
       if (this.job.status !== 'FINISHED' && this.job.status !== 'ERROR') {
@@ -656,6 +677,7 @@ export default {
       var x
       let promises = []
       let renderSliceLogs = []
+      var maxFrames = 100
       for (x=0; x<this.job.frameJobs[idx].sliceJobs.length; x++) {
         var slice = this.job.frameJobs[idx].sliceJobs[x]
 	      // calculate log frame by render start frame offset
@@ -696,14 +718,19 @@ export default {
         })
         this.showDeleteJobDialog = false
     },
-    updateCarouselFrame(v) {
-      this.carouselFrame = v
-      var offset = parseInt(this.job.request.renderStartFrame)
-      this.updateCurrentFrame(v + offset)
-    },
     updateCurrentFrame(v) {
       this.currentFrame = parseInt(v)
       this.directFrame = this.currentFrame
+      this.currentFrameOffset = this.currentFrame
+      this.loadFrameJobRenders(this.currentFrame)
+      this.currentFrameUrl = this.getFrameJobRenderSrc(this.currentFrame)
+    },
+    updateCarouselFrame(v) {
+      this.carouselFrame = v
+      var offset = parseInt(this.job.request.renderStartFrame)
+      var currentFrame = parseInt(v) + offset
+      this.updateCurrentFrame(currentFrame)
+      this.loadFrameJobRenders(currentFrame)
     },
     updateDirectFrame(v) {
       var offset = 0
@@ -716,6 +743,7 @@ export default {
       var offset = parseInt(this.job.request.renderStartFrame)
       this.updateCarouselFrame(v - offset)
       this.updateCurrentFrame(v)
+      this.currentFrameUrl = this.getFrameJobRenderSrc(this.currentFrame)
     },
     framePrev10() {
       var frame = (parseInt(this.carouselFrame) + parseInt(this.job.request.renderStartFrame)) - 10
@@ -726,6 +754,18 @@ export default {
       }
       this.updateCurrentFrame(frame)
       this.carouselFrame = cframe
+      this.loadFrameJobRenders(frame)
+    },
+    framePrev100() {
+      var frame = (parseInt(this.carouselFrame) + parseInt(this.job.request.renderStartFrame)) - 100
+      var cframe = parseInt(this.carouselFrame) - 100
+      if (frame < parseInt(this.job.request.renderStartFrame)) {
+        frame = this.job.request.renderStartFrame
+	cframe = 0
+      }
+      this.updateCurrentFrame(frame)
+      this.carouselFrame = cframe
+      this.loadFrameJobRenders(frame)
     },
     frameNext10() {
       var frame = (parseInt(this.carouselFrame) + parseInt(this.job.request.renderStartFrame)) + 10
@@ -736,6 +776,18 @@ export default {
       }
       this.updateCurrentFrame(frame)
       this.carouselFrame = cframe
+      this.loadFrameJobRenders(frame)
+    },
+    frameNext100() {
+      var frame = (parseInt(this.carouselFrame) + parseInt(this.job.request.renderStartFrame)) + 100
+      var cframe = parseInt(this.carouselFrame) + 100
+      if (frame > parseInt(this.job.request.renderEndFrame)) {
+        frame = this.job.request.renderEndFrame
+	cframe = parseInt(this.frameJobs.length) - 1
+      }
+      this.updateCurrentFrame(frame)
+      this.carouselFrame = cframe
+      this.loadFrameJobRenders(frame)
     },
     startGetJobArchive() {
       this.getJobArchive()
