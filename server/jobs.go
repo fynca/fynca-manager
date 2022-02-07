@@ -232,6 +232,12 @@ func (s *Server) jobQueueHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	jobPriority, err := parseJobPriority(r.FormValue("priority"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	jobRequest := &api.JobRequest{
 		Name:             r.FormValue("name"),
 		ResolutionX:      int64(resX),
@@ -243,6 +249,7 @@ func (s *Server) jobQueueHandler(w http.ResponseWriter, r *http.Request) {
 		RenderUseGPU:     renderUseGPU,
 		RenderSlices:     int64(renderSlices),
 		RenderEngine:     renderEngine,
+		Priority:         jobPriority,
 	}
 
 	projectFile, _, err := r.FormFile("project")
@@ -365,4 +372,17 @@ func parseRenderEngine(e string) (api.RenderEngine, error) {
 		return api.RenderEngine_BLENDER_EEVEE, nil
 	}
 	return api.RenderEngine_UNKNOWN, fmt.Errorf("unsupported render engine: %q", e)
+}
+
+func parseJobPriority(p string) (api.JobPriority, error) {
+	switch strings.ToLower(strings.TrimSpace(p)) {
+	case "urgent":
+		return api.JobPriority_URGENT, nil
+	case "normal":
+		return api.JobPriority_NORMAL, nil
+	case "low":
+		return api.JobPriority_LOW, nil
+	}
+
+	return api.JobPriority_NORMAL, fmt.Errorf("unknown priority %s", p)
 }

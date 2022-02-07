@@ -210,8 +210,8 @@
 
             <v-row>
               <v-col
-                cols="12"
-                sm="6"
+                cols="6"
+                sm="4"
               >
                 <v-select
                   v-model="selectedRenderEngine"
@@ -221,11 +221,21 @@
               </v-col>
 
               <v-col
+                cols="6"
+                sm="4"
+              >
+                <v-select
+                  v-model="jobPriority"
+                  :items="jobPriorities"
+                  label="Priority"
+                ></v-select>
+              </v-col>
+
+              <v-col
                 cols="12"
-                sm="6"
+                sm="4"
               >
                 <v-checkbox
-                  class="ml-14"
                   v-model="renderUseGPU"
                   label="Use GPU"
                   hint="Enable GPU (if available) for rendering"
@@ -391,6 +401,8 @@ export default {
     projectFileRules: [
       v => !!v || 'Project file is required'
     ],
+    jobPriorities: ['Normal', 'Urgent', 'Low'],
+    jobPriority: 'Normal',
     showQueueRenderDialog: false,
     color: 'error',
   }),
@@ -449,6 +461,7 @@ export default {
       formData.append("renderUseGPU", this.renderUseGPU)
       formData.append("renderSlices", this.renderSlices)
       formData.append("project", this.projectFile)
+      formData.append("priority", this.jobPriority)
 	    this.$root.$emit('showInfo', "Job uploading. Please wait...")
       axios.post(this.$apiHost+'/api/v1/jobs', formData)
         .then( res => {
