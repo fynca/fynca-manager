@@ -25,13 +25,16 @@ func (s *Server) jobsListHandler(w http.ResponseWriter, r *http.Request) {
 	defer fc.Close()
 
 	ctx := r.Context()
-	resp, err := fc.ListJobs(ctx, &api.ListJobsRequest{
-		ExcludeFrames: true,
-	})
+	resp, err := fc.ListJobs(ctx, &api.ListJobsRequest{})
 	if err != nil {
 		logrus.WithError(err).Error("error getting jobs")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// remove the frame jobs for a lighter client payload
+	for _, job := range resp.Jobs {
+		job.FrameJobs = []*api.FrameJob{}
 	}
 
 	if err := s.marshaler().Marshal(w, resp); err != nil {

@@ -13,6 +13,7 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Config struct {
@@ -33,6 +34,10 @@ type Config struct {
 	ListenAddr string
 	// PublicDir is the directory of the web UI source
 	PublicDir string
+	// TraceEndpoint is the endpoint to send trace data
+	TraceEndpoint string
+	// Environment is the environment for trace identification
+	Environment string
 }
 
 type Server struct {
@@ -71,22 +76,22 @@ func (s *Server) Run() error {
 	v1 := apiRouter.PathPrefix("/v1").Subrouter()
 	v1.Methods("OPTIONS").HandlerFunc(apiOK)
 	// jobs
-	v1.HandleFunc("/jobs", s.jobsListHandler).Methods("GET")
-	v1.HandleFunc("/jobs", s.jobQueueHandler).Methods("POST")
-	v1.HandleFunc("/jobs/{id:[0-9,a-z,-]+}", s.jobDetailsHandler).Methods("GET")
-	v1.HandleFunc("/jobs/{id:[0-9,a-z,-]+}/latest-render/{frame:[0-9]+}", s.jobLatestRenderHandler).Methods("GET")
-	v1.HandleFunc("/jobs/{id:[0-9,a-z,-]+}", s.jobDeleteHandler).Methods("DELETE")
-	v1.HandleFunc("/jobs/{id:[0-9,a-z,-]+}/log", s.jobLogHandler).Methods("GET")
-	v1.HandleFunc("/jobs/{id:[0-9,a-z,-]+}/archive", s.jobArchiveHandler).Methods("GET")
+	v1.Handle("/jobs", otelhttp.NewHandler(http.HandlerFunc(s.jobsListHandler), "jobs.list")).Methods("GET")
+	v1.Handle("/jobs", otelhttp.NewHandler(http.HandlerFunc(s.jobQueueHandler), "jobs.queue")).Methods("POST")
+	v1.Handle("/jobs/{id:[0-9,a-z,-]+}", otelhttp.NewHandler(http.HandlerFunc(s.jobDetailsHandler), "job.details")).Methods("GET")
+	v1.Handle("/jobs/{id:[0-9,a-z,-]+}/latest-render/{frame:[0-9]+}", otelhttp.NewHandler(http.HandlerFunc(s.jobLatestRenderHandler), "jobs.latestrender")).Methods("GET")
+	v1.Handle("/jobs/{id:[0-9,a-z,-]+}", otelhttp.NewHandler(http.HandlerFunc(s.jobDeleteHandler), "job.delete")).Methods("DELETE")
+	v1.Handle("/jobs/{id:[0-9,a-z,-]+}/log", otelhttp.NewHandler(http.HandlerFunc(s.jobLogHandler), "job.log")).Methods("GET")
+	v1.Handle("/jobs/{id:[0-9,a-z,-]+}/archive", otelhttp.NewHandler(http.HandlerFunc(s.jobArchiveHandler), "job.archive")).Methods("GET")
 
-	v1.HandleFunc("/renders/{id:[0-9,a-z,-]+}/logs/{frame:[0-9]+}", s.renderLogHandler).Methods("GET")
+	v1.Handle("/renders/{id:[0-9,a-z,-]+}/logs/{frame:[0-9]+}", otelhttp.NewHandler(http.HandlerFunc(s.renderLogHandler), "renders.log")).Methods("GET")
 
-	v1.HandleFunc("/workers", s.workersListHandler).Methods("GET")
-	v1.HandleFunc("/workers/{name}/stop", s.workerStopHandler).Methods("POST")
+	v1.Handle("/workers", otelhttp.NewHandler(http.HandlerFunc(s.workersListHandler), "workers.list")).Methods("GET")
+	v1.Handle("/workers/{name}/stop", otelhttp.NewHandler(http.HandlerFunc(s.workerStopHandler), "worker.stop")).Methods("POST")
 
-	v1.HandleFunc("/accounts/profile", s.accountsProfileHandler).Methods("GET")
-	v1.HandleFunc("/accounts/profile", s.accountsUpdateProfileHandler).Methods("POST")
-	v1.HandleFunc("/accounts/change-password", s.accountsChangePasswordHandler).Methods("POST")
+	v1.Handle("/accounts/profile", otelhttp.NewHandler(http.HandlerFunc(s.accountsProfileHandler), "accounts.profile")).Methods("GET")
+	v1.Handle("/accounts/profile", otelhttp.NewHandler(http.HandlerFunc(s.accountsUpdateProfileHandler), "accounts.updateprofile")).Methods("POST")
+	v1.Handle("/accounts/change-password", otelhttp.NewHandler(http.HandlerFunc(s.accountsChangePasswordHandler), "accounts.changepassword")).Methods("POST")
 
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir(s.cfg.PublicDir)))
 

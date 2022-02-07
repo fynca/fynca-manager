@@ -74,6 +74,15 @@ func main() {
 			Usage: "directory that contains the Fynca Manager UI web application",
 			Value: "./public",
 		},
+		&cli.StringFlag{
+			Name:  "trace-endpoint",
+			Usage: "endpoint to send trace data",
+		},
+		&cli.StringFlag{
+			Name:  "environment",
+			Usage: "environment name for trace identification",
+			Value: "dev",
+		},
 	}
 	app.Action = run
 

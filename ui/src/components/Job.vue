@@ -402,6 +402,12 @@
         </v-card-title>
 
         <v-card-text class="mt-5">
+          <v-progress-linear
+            v-if="renderLogLoading"
+            indeterminate
+            color="primary darken-2"
+          ></v-progress-linear>
+
           <div v-if="renderSliceLogs.length === 0"v-html="renderLog"></div>
           <template v-else>
             <v-tabs>
@@ -508,6 +514,7 @@ export default {
     frameRenderUrls: new Map(),
     renderProgress: 0,
     renderLog: '',
+    renderLogLoading: false,
     renderSliceLogs: [],
     jobArchivePending: false,
     jobArchiveTimer: '',
@@ -561,6 +568,9 @@ export default {
           if (this.job.status === 'FINISHED') {
             this.rendering = false
             this.cancelLoadJob()
+          }
+          if (this.frameJobs.length > 100) {
+            this.maxFrames = 5
           }
           this.currentFrame = parseInt(this.job.request.renderStartFrame)
 	  this.directFrame = this.currentFrame
@@ -648,10 +658,13 @@ export default {
       if (this.job.status !== 'FINISHED' && this.job.status !== 'ERROR') {
         return
       }
+      this.renderLog = ''
+      this.renderLogLoading = true
       axios.get(this.$apiHost + '/api/v1/renders/' + this.job.id + '/logs/' + this.currentFrame)
         .then(resp => {
           // reset
           this.renderLog = resp.data.renderLog.log.replaceAll('\n', '<br />')
+          this.renderLogLoading = false
         })
         .catch(err => {
           var msg
@@ -661,6 +674,7 @@ export default {
             msg = err
           }
           this.renderLog = 'Error loading job log: ' + msg
+          this.renderLogLoading = false
         })
     },
     formatRenderLog(v) {

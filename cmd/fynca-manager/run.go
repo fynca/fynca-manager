@@ -1,21 +1,33 @@
 package main
 
 import (
+	"context"
+
+	"git.underland.io/ehazlett/fynca/pkg/tracing"
 	"github.com/ehazlett/fynca-manager/server"
 	cli "github.com/urfave/cli/v2"
 )
 
-func run(cx *cli.Context) error {
+func run(clix *cli.Context) error {
 	cfg := &server.Config{
-		GRPCAddress:          cx.String("grpc-address"),
-		TLSServerCertificate: cx.String("grpc-tls-server-cert"),
-		TLSServerKey:         cx.String("grpc-tls-server-key"),
-		TLSClientCertificate: cx.String("grpc-tls-client-cert"),
-		TLSClientKey:         cx.String("grpc-tls-client-key"),
-		APICORSDomain:        cx.String("api-cors-domain"),
-		ListenAddr:           cx.String("listen-addr"),
-		PublicDir:            cx.String("public-dir"),
+		GRPCAddress:          clix.String("grpc-address"),
+		TLSServerCertificate: clix.String("grpc-tls-server-cert"),
+		TLSServerKey:         clix.String("grpc-tls-server-key"),
+		TLSClientCertificate: clix.String("grpc-tls-client-cert"),
+		TLSClientKey:         clix.String("grpc-tls-client-key"),
+		APICORSDomain:        clix.String("api-cors-domain"),
+		ListenAddr:           clix.String("listen-addr"),
+		PublicDir:            clix.String("public-dir"),
+		TraceEndpoint:        clix.String("trace-endpoint"),
+		Environment:          clix.String("environment"),
 	}
+
+	tp, err := tracing.NewProvider(cfg.TraceEndpoint, "fynca-manager", cfg.Environment)
+	if err != nil {
+		return err
+	}
+	defer tp.Shutdown(context.Background())
+
 	srv, err := server.NewServer(cfg)
 	if err != nil {
 		return err
