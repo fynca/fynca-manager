@@ -2,7 +2,7 @@
 ## explicit; go 1.16
 git.underland.io/ehazlett/fynca
 git.underland.io/ehazlett/fynca/api/services/accounts/v1
-git.underland.io/ehazlett/fynca/api/services/render/v1
+git.underland.io/ehazlett/fynca/api/services/jobs/v1
 git.underland.io/ehazlett/fynca/client
 git.underland.io/ehazlett/fynca/pkg/tracing
 git.underland.io/ehazlett/fynca/version

@@ -46,6 +46,8 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	// clear password crypt
 	resp.Account.PasswordCrypt = nil
 
+	logrus.Debugf("%+v", resp.Account)
+
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		logrus.WithError(err).Error("error encoding user account")
 		http.Error(w, err.Error(), http.StatusInternalServerError)

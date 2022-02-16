@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	api "git.underland.io/ehazlett/fynca/api/services/render/v1"
+	api "git.underland.io/ehazlett/fynca/api/services/jobs/v1"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
