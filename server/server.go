@@ -88,6 +88,7 @@ func (s *Server) Run() error {
 
 	v1.Handle("/workers", otelhttp.NewHandler(http.HandlerFunc(s.workersListHandler), "workers.list")).Methods("GET")
 	v1.Handle("/workers/{name}/stop", otelhttp.NewHandler(http.HandlerFunc(s.workerStopHandler), "worker.stop")).Methods("POST")
+	v1.Handle("/workers/{name}/update", otelhttp.NewHandler(http.HandlerFunc(s.workerUpdateHandler), "worker.update")).Methods("POST")
 
 	v1.Handle("/accounts/profile", otelhttp.NewHandler(http.HandlerFunc(s.accountsProfileHandler), "accounts.profile")).Methods("GET")
 	v1.Handle("/accounts/profile", otelhttp.NewHandler(http.HandlerFunc(s.accountsUpdateProfileHandler), "accounts.updateprofile")).Methods("POST")
@@ -117,7 +118,7 @@ func (s *Server) getClient(r *http.Request) (*client.Client, error) {
 	}
 
 	opts := []client.ClientOpt{}
-	token, ok := r.Context().Value(authTokenKey).(string)
+	token, ok := r.Context().Value(fynca.CtxTokenKey).(string)
 	if ok {
 		opts = append(opts, client.WithToken(token))
 	}

@@ -5,12 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	"git.underland.io/ehazlett/fynca"
 	"github.com/sirupsen/logrus"
 )
-
-type ctxKey string
-
-var authTokenKey ctxKey
 
 type CORSMiddleware struct {
 	domain  string
@@ -45,7 +42,7 @@ func withTokenMiddleware(next http.Handler) http.Handler {
 		}
 
 		// add auth token to context
-		ctx = context.WithValue(r.Context(), authTokenKey, token)
+		ctx = context.WithValue(r.Context(), fynca.CtxTokenKey, token)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
