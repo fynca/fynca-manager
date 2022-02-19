@@ -148,7 +148,7 @@
           <v-list-item>
             <v-list-item-title>Engine</v-list-item-title>
             <v-list-item-subtitle class="text-right">
-              <span>{{renderEngine | formatRenderEngineName | toTitleCase}}</span>
+              <span>{{renderEngine | formatRenderEngineName }}</span>
             </v-list-item-subtitle>
           </v-list-item>
 
@@ -245,6 +245,19 @@
                 text-color="white"
               >
                 {{renderSlices}}
+              </v-chip>
+            </v-list-item-subtitle>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-title>Created</v-list-item-title>
+            <v-list-item-subtitle class="text-right">
+              <v-chip
+                small
+                class="ma-2"
+                color="grey darken-1"
+                text-color="white"
+              >
+                {{jobCreated}}
               </v-chip>
             </v-list-item-subtitle>
           </v-list-item>
@@ -509,6 +522,7 @@ export default {
     rendering: true,
     renderUseGPU: false,
     text: '',
+    jobCreated: '',
     timer: '',
     frameJobs: [],
     frameRenderUrls: new Map(),
@@ -555,6 +569,7 @@ export default {
           var created = new Date(this.job.createdAt)
           var started = new Date(this.job.startedAt)
           var finished = new Date(this.job.finishedAt)
+          this.jobCreated = created.toLocaleString('en-US').replace(',', '')
           this.queueTime = this.humanTime(started - created)
           this.jobTime = this.humanTime(finished - started)
           this.loading = false

@@ -440,6 +440,7 @@ export default {
       this.renderSlices = 0
       this.projectFile = null
       this.selectedRenderEngine = 'Cycles'
+      this.jobPriority = 'Normal'
       this.showUploadingOverlay = false
     },
     queueRenderJob() {

@@ -100,7 +100,7 @@
         <v-list-item class="mb-n4">
           <v-list-item-title>Engine</v-list-item-title>
           <v-list-item-subtitle>
-            {{job.request.renderEngine | formatRenderEngineName | toTitleCase }}
+            {{job.request.renderEngine | formatRenderEngineName }}
           </v-list-item-subtitle>
         </v-list-item>
         <v-list-item class="mb-n4">

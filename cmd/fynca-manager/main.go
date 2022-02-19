@@ -11,11 +11,11 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Name = version.Name
-	app.Usage = "Antimatter Cosmos Server"
+	app.Usage = "Fynca Manager"
 	app.Version = version.Version
 	app.Authors = []*cli.Author{
 		{
-			Name: "Project Antimatter Team",
+			Name: "@ehazlett",
 		},
 	}
 	app.Before = func(c *cli.Context) error {
