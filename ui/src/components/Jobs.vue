@@ -12,15 +12,31 @@
 
     <v-col v-if="showEmptyJobsMessage">
       <v-card align="center" justify="center" elevation="0">
+      <v-card-text class="text-h4 font-weight-light">
+        Start a render job by clicking
+        <v-btn
+          class="ml-1"
+          color="primary"
+          v-bind="attrs"
+          v-on="on"
+          large
+          @click="showRenderDialog"
+        >
+          <span>Render</span>
+          <v-icon
+              right
+              dark
+              >mdi-plus-circle-outline
+          </v-icon>
+        </v-btn>
+
+      </v-card-text>
       <v-img
         contain
         max-width="75%"
         src="/img/fynca-default.png"
       >
       </v-img>
-        <v-card-text class="text-h4 font-weight-light">
-          Start a render job by clicking the "Render" button in the top right.
-        </v-card-text>
       </v-card>
     </v-col>
 
@@ -84,6 +100,9 @@ export default {
     },
     cancelLoadJobs() {
       clearInterval(this.timer)
+    },
+    showRenderDialog() {
+	    this.$root.$emit('showRenderDialog')
     }
   },
   mounted () {

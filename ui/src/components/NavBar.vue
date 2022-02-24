@@ -417,6 +417,9 @@ export default {
   created() {
   },
   mounted () {
+    this.$root.$on('showRenderDialog', (txt) => {
+      this.showQueueRenderDialog = true
+    })
     this.$root.$on('showInfo', (txt) => {
       this.infoText = txt
       this.showInfo = true
