@@ -96,7 +96,7 @@
           </template>
 
           <template v-slot:item.actions="{ item }">
-            <WorkerActions v-bind:name="item.name" />
+            <WorkerActions v-bind:worker="item" />
           </template>
         </v-data-table>
       </v-col>
