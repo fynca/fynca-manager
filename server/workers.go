@@ -20,7 +20,7 @@ import (
 	"net/url"
 	"strings"
 
-	api "git.underland.io/ehazlett/fynca/api/services/workers/v1"
+	api "github.com/fynca/fynca/api/services/workers/v1"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"

@@ -16,7 +16,7 @@ package main
 import (
 	"os"
 
-	"github.com/ehazlett/fynca-manager/version"
+	"github.com/fynca/fynca-manager/version"
 	"github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 )

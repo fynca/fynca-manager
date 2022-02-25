@@ -1,0 +1,5 @@
+bin
+updates
+*.swp
+config.toml
+fynca.toml

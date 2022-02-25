@@ -16,8 +16,8 @@ package main
 import (
 	"context"
 
-	"git.underland.io/ehazlett/fynca/pkg/tracing"
-	"github.com/ehazlett/fynca-manager/server"
+	"github.com/fynca/fynca/pkg/tracing"
+	"github.com/fynca/fynca-manager/server"
 	cli "github.com/urfave/cli/v2"
 )
 

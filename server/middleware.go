@@ -18,7 +18,7 @@ import (
 	"net/http"
 	"strings"
 
-	"git.underland.io/ehazlett/fynca"
+	"github.com/fynca/fynca"
 	"github.com/sirupsen/logrus"
 )
 

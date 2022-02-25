@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	api "git.underland.io/ehazlett/fynca/api/services/accounts/v1"
+	api "github.com/fynca/fynca/api/services/accounts/v1"
 	"github.com/sirupsen/logrus"
 )
 
