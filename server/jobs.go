@@ -147,6 +147,7 @@ func (s *Server) jobLatestRenderHandler(w http.ResponseWriter, r *http.Request) 
 		ID:    id,
 		Frame: int64(frame),
 	}
+
 	// ttl if specified
 	if v := r.URL.Query().Get("ttl"); v != "" {
 		ttl, err := time.ParseDuration(v)
@@ -165,11 +166,15 @@ func (s *Server) jobLatestRenderHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if resp.Url == "" {
+		return
+	}
+
 	// if proxy is enabled override media url
 	if s.cfg.ProxyEnabled {
 		urlContent := base64.StdEncoding.EncodeToString([]byte(resp.Url))
 		mResp := &api.GetLatestRenderResponse{
-			Url:   fmt.Sprintf("/proxy/%s", urlContent),
+			Url:   fmt.Sprintf("/proxy/%s?ts=%d", urlContent, time.Now().UnixNano()),
 			Frame: resp.Frame,
 		}
 		resp = mResp

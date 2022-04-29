@@ -1,14 +1,5 @@
 <template>
   <v-row class="pb-12">
-    <v-overlay :value="loading" class="text-center">
-      <v-progress-circular
-        :size="100"
-        :width="10"
-        color="primary"
-        indeterminate
-      ></v-progress-circular>
-    </v-overlay>
-
     <v-col md="9">
         <v-card
           elevation="5"
@@ -21,24 +12,13 @@
             color="primary"
           ></v-progress-linear>
           <v-card-text>
-            <v-carousel
-              hide-delimiters
+            <v-img
+              v-bind:src="renderFrameSrc"
               height="650"
-              v-model="carouselFrame"
-              :continuous=false
-              @change="updateCarouselFrame"
+              contain
+              max-height="650"
             >
-              <v-carousel-item
-                v-for="(frameJob, i) in frameJobs"
-                :key="i"
-              >
-                <v-img
-                  :src="getFrameJobRenderSrc(frameJob.renderFrame)"
-                  max-height="650"
-                >
-                </v-img>
-              </v-carousel-item>
-            </v-carousel>
+            </v-img>
 
             <div class="text-center mt-2">
               <v-row justify="center">
@@ -58,6 +38,14 @@
                   >
                     <v-icon>mdi-rewind-10</v-icon>
                   </v-btn>
+
+                  <v-btn
+                    @click="framePrev"
+                    v-if="frameJobs.length > 1"
+                    class="mt-3 ml-1 mr-1"
+                  >
+                    <v-icon>mdi-skip-previous</v-icon>
+                  </v-btn>
                 </v-col>
                 <v-col cols="1">
                 <v-text-field
@@ -71,6 +59,14 @@
                 ></v-text-field>
                 </v-col>
                 <v-col align="left">
+                  <v-btn
+                    @click="frameNext"
+                    v-if="frameJobs.length > 1"
+                    class="mt-3 ml-1 mr-1"
+                  >
+                    <v-icon>mdi-skip-next</v-icon>
+                  </v-btn>
+
                   <v-btn
                     @click="frameNext10"
                     v-if="frameJobs.length > 10"
@@ -341,7 +337,6 @@
                       dark
                       color="primary lighten-1"
                       class="ml-1 mr-1"
-                      @click=""
                     >
                     <v-icon
                       v-bind="attrs"
@@ -443,7 +438,7 @@
             color="primary darken-2"
           ></v-progress-linear>
 
-          <div v-if="renderSliceLogs.length === 0"v-html="renderLog"></div>
+          <div v-if="renderSliceLogs.length === 0" v-html="renderLog"></div>
           <template v-else>
             <v-tabs>
               <v-tab v-for="(log, i) in renderSliceLogs" :key="i">Slice {{log.slice}}</v-tab>
@@ -525,15 +520,16 @@ export default {
     job: {},
     loading: true,
     jobTitle: '',
-    jobImage: '',
     renderEngine: '',
     renderFrame: '',
+    renderStartFrame: -1,
     renderEndFrame: -1,
     renderSamples: '',
     resolutionX: '',
     resolutionY: '',
     resolutionScale: '',
     renderSlices: null,
+    renderFrameSrc: '',
     queueTime: '',
     jobTime: '',
     renderTime: '',
@@ -582,6 +578,7 @@ export default {
           this.jobTitle = this.job.request.name
           this.renderSamples = this.job.request.renderSamples
           this.renderEngine = this.job.request.renderEngine
+          this.renderStartFrame = this.job.request.renderStartFrame
           this.renderEndFrame = this.job.request.renderEndFrame
           this.renderUseGPU = this.job.request.renderUseGpu
           this.renderSlices = this.job.request.renderSlices
@@ -597,21 +594,20 @@ export default {
           this.loading = false
           this.cacheKey = this.job.finishedAt
           this.frameJobs = this.job.frameJobs
+          if (this.job.status === 'FINISHED') {
+            this.rendering = false
+            this.cancelLoadJob()
+          }
           // convert render time seconds
           if (this.job.duration !== null) {
             var renderTimeMs = parseInt(this.job.duration.replace('s', '')) * 1000
             this.jobRenderTime = this.humanTime(renderTimeMs)
           }
-          if (this.job.status === 'FINISHED') {
-            this.rendering = false
-            this.cancelLoadJob()
-          }
+          this.currentFrame = parseInt(this.job.request.renderStartFrame)
           if (this.frameJobs.length > 100) {
             this.maxFrames = 5
           }
-          this.currentFrame = parseInt(this.job.request.renderStartFrame)
-	  this.directFrame = this.currentFrame
-          this.loadFrameJobRenders(this.currentFrame)
+          this.directFrame = this.currentFrame
           // render progress
           if (this.job.frameJobs.length > 1) {
             var x
@@ -633,6 +629,7 @@ export default {
             }
             this.renderProgress = (renderedSlices / frameJob.sliceJobs.length * 100)
           }
+          this.loadFrameJobRenders(this.currentFrame)
         })
         .catch(err => {
           var msg
@@ -642,7 +639,7 @@ export default {
             msg = err
           }
           this.loading = false
-	        this.$root.$emit('showError', 'Error loading job: ' + msg)
+          this.$root.$emit('showError', 'Error loading job: ' + msg)
         })
     },
     getCurrentFrameRenderSrc() {
@@ -655,41 +652,22 @@ export default {
       return this.frameRenderUrls.get(frame)
     },
     loadFrameJobRenders(v) {
-      var x
-      var c = 0
-      var promises = []
-      var startFrame = parseInt(this.job.request.renderStartFrame)
-      var endFrame = parseInt(this.job.request.renderEndFrame)
       var targetFrame = parseInt(v)
-      // skip if already loaded
-      if (this.frameRenderUrls.has(targetFrame.toString())) {
-        return
-      }
       this.loading = true
-      for (x=targetFrame; x<=endFrame; x++) {
-        if (c > this.maxFrames) {
-          this.currentLoadFrameOffset = x - 1
-          break
+      axios.get(this.$apiHost + '/api/v1/jobs/' + this.job.id + '/latest-render/'+ targetFrame + '?ttl=3600s')
+      .then(resp => {
+        this.renderFrameSrc = resp.data.url
+      })
+      .catch(err => {
+        var msg
+        if (err.response != null) {
+          msg = err.response.data
+        } else {
+          msg = err
         }
-        c++
-        promises.push(
-          axios.get(this.$apiHost + '/api/v1/jobs/' + this.job.id + '/latest-render/'+ x + '?ttl=3600s')
-            .then(resp => {
-              this.frameRenderUrls.set(resp.data.frame, resp.data.url)
-            })
-            .catch(err => {
-              var msg
-              if (err.response != null) {
-                msg = err.response.data
-              } else {
-                msg = err
-              }
-	            this.$root.$emit('showError', 'Error getting job latest render: ' + msg)
-          }))
-        }
-        Promise.all(promises).then(() => {
-          this.loading = false
-        })
+        this.$root.$emit('showError', 'Error getting job latest render: ' + msg)
+        this.loading = false
+      })
     },
     loadRenderLog() {
       if (this.job.status !== 'FINISHED' && this.job.status !== 'ERROR') {
@@ -728,13 +706,12 @@ export default {
       var x
       let promises = []
       let renderSliceLogs = []
-      var maxFrames = 100
       for (x=0; x<this.job.frameJobs[idx].sliceJobs.length; x++) {
-        var slice = this.job.frameJobs[idx].sliceJobs[x]
-	      // calculate log frame by render start frame offset
-	      var logFrame = this.currentFrame
+        var slice = x
+        // calculate log frame by render start frame offset
+        var logFrame = this.currentFrame
         promises.push(
-          axios.get(this.$apiHost + '/api/v1/renders/' + this.job.id + '/logs/' + logFrame + '?slice=' + x)
+          axios.get(this.$apiHost + '/api/v1/renders/' + this.job.id + '/logs/' + logFrame + '?slice=' + slice)
             .then(resp => {
               renderSliceLogs.push(resp.data.renderLog)
             })
@@ -756,6 +733,7 @@ export default {
     },
     deleteJob(id) {
       axios.delete(this.$apiHost + '/api/v1/jobs/' + id)
+        // eslint-disable-next-line no-unused-vars
         .then( resp => {
           this.$router.push('/jobs')
         })
@@ -784,7 +762,6 @@ export default {
       this.loadFrameJobRenders(currentFrame)
     },
     updateDirectFrame(v) {
-      var offset = 0
       if (v < parseInt(this.job.request.renderStartFrame)) {
         v = parseInt(this.job.request.renderStartFrame)
       }
@@ -796,48 +773,51 @@ export default {
       this.updateCurrentFrame(v)
       this.currentFrameUrl = this.getFrameJobRenderSrc(this.currentFrame)
     },
-    framePrev10() {
-      var frame = (parseInt(this.carouselFrame) + parseInt(this.job.request.renderStartFrame)) - 10
-      var cframe = parseInt(this.carouselFrame) - 10
+    framePrev() {
+      var frame = (parseInt(this.currentFrame) - 1)
       if (frame < parseInt(this.job.request.renderStartFrame)) {
         frame = this.job.request.renderStartFrame
-	cframe = 0
       }
       this.updateCurrentFrame(frame)
-      this.carouselFrame = cframe
+      this.loadFrameJobRenders(frame)
+    },
+    framePrev10() {
+      var frame = (parseInt(this.currentFrame) - 10)
+      if (frame < parseInt(this.job.request.renderStartFrame)) {
+        frame = this.job.request.renderStartFrame
+      }
+      this.updateCurrentFrame(frame)
       this.loadFrameJobRenders(frame)
     },
     framePrev100() {
-      var frame = (parseInt(this.carouselFrame) + parseInt(this.job.request.renderStartFrame)) - 100
-      var cframe = parseInt(this.carouselFrame) - 100
+      var frame = (parseInt(this.currentFrame) - 100)
       if (frame < parseInt(this.job.request.renderStartFrame)) {
         frame = this.job.request.renderStartFrame
-	cframe = 0
       }
       this.updateCurrentFrame(frame)
-      this.carouselFrame = cframe
       this.loadFrameJobRenders(frame)
     },
-    frameNext10() {
-      var frame = (parseInt(this.carouselFrame) + parseInt(this.job.request.renderStartFrame)) + 10
-      var cframe = parseInt(this.carouselFrame) + 10
+    frameNext() {
+      var frame = (parseInt(this.currentFrame) + 1)
       if (frame > parseInt(this.job.request.renderEndFrame)) {
         frame = this.job.request.renderEndFrame
-	cframe = parseInt(this.frameJobs.length) - 1
       }
       this.updateCurrentFrame(frame)
-      this.carouselFrame = cframe
+    },
+    frameNext10() {
+      var frame = (parseInt(this.currentFrame) + 10)
+      if (frame > parseInt(this.job.request.renderEndFrame)) {
+        frame = this.job.request.renderEndFrame
+      }
+      this.updateCurrentFrame(frame)
       this.loadFrameJobRenders(frame)
     },
     frameNext100() {
-      var frame = (parseInt(this.carouselFrame) + parseInt(this.job.request.renderStartFrame)) + 100
-      var cframe = parseInt(this.carouselFrame) + 100
+      var frame = (parseInt(this.currentFrame) + 100)
       if (frame > parseInt(this.job.request.renderEndFrame)) {
         frame = this.job.request.renderEndFrame
-	cframe = parseInt(this.frameJobs.length) - 1
       }
       this.updateCurrentFrame(frame)
-      this.carouselFrame = cframe
       this.loadFrameJobRenders(frame)
     },
     startGetJobArchive() {
@@ -855,7 +835,7 @@ export default {
           var url = resp.data
           if (url === "") {
             if (!this.jobArchivePending) {
-	            this.$root.$emit('showInfo', 'Generating job archive. This can take a few minutes depending on project size. You can refresh and the archive will be generated in the background.')
+              this.$root.$emit('showInfo', 'Generating job archive. This can take a few minutes depending on project size. You can refresh and the archive will be generated in the background.')
               this.jobArchivePending = true
             }
             return
@@ -873,7 +853,7 @@ export default {
           } else {
             msg = err
           }
-	        this.$root.$emit('showError', 'Error getting job archive: ' + msg)
+          this.$root.$emit('showError', 'Error getting job archive: ' + msg)
         })
     },
     cancelLoadJob() {
