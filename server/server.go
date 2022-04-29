@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/fynca/fynca"
+	"github.com/fynca/fynca-manager/version"
 	api "github.com/fynca/fynca/api/services/jobs/v1"
 	"github.com/fynca/fynca/client"
-	"github.com/fynca/fynca-manager/version"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -51,6 +51,8 @@ type Config struct {
 	TraceEndpoint string
 	// Environment is the environment for trace identification
 	Environment string
+	// ProxyEnabled proxies static media from the Fynca server
+	ProxyEnabled bool
 }
 
 type Server struct {
@@ -81,6 +83,9 @@ func (s *Server) Run() error {
 	authRouter := r.PathPrefix("/auth").Subrouter()
 	authRouter.Methods("OPTIONS").HandlerFunc(apiOK)
 	authRouter.HandleFunc("/login", s.loginHandler).Methods("POST")
+
+	// proxy does not require auth as the proxied content is signed based on the media and expires
+	r.Handle("/proxy/{content}", otelhttp.NewHandler(http.HandlerFunc(s.proxyMediaHandler), "proxy.media")).Methods("GET")
 
 	// api
 	apiRouter := r.PathPrefix("/api").Subrouter()

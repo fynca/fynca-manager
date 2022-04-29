@@ -87,6 +87,10 @@ func main() {
 			Usage: "directory that contains the Fynca Manager UI web application",
 			Value: "./public",
 		},
+		&cli.BoolFlag{
+			Name:  "proxy",
+			Usage: "proxy media through manager instead of Fynca storage backend",
+		},
 		&cli.StringFlag{
 			Name:  "trace-endpoint",
 			Usage: "endpoint to send trace data",

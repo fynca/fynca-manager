@@ -339,7 +339,29 @@
                 <template v-slot:activator="{ on, attrs }">
                   <v-btn
                       dark
-                      color="primary lighten-2"
+                      color="primary lighten-1"
+                      class="ml-1 mr-1"
+                      @click=""
+                    >
+                    <v-icon
+                      v-bind="attrs"
+                      v-on="on"
+                      dark
+                      >
+                        mdi-cog-play-outline
+                    </v-icon>
+                  </v-btn>
+                </template>
+                <span>Job Actions</span>
+              </v-tooltip>
+            </template>
+
+            <template v-if="job.status === 'FINISHED' || job.status === 'ERROR'">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                      dark
+                      color="green lighten-2"
                       class="ml-1 mr-1"
                       @click="startGetJobArchive"
                     >

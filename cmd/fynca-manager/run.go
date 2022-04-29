@@ -16,8 +16,8 @@ package main
 import (
 	"context"
 
-	"github.com/fynca/fynca/pkg/tracing"
 	"github.com/fynca/fynca-manager/server"
+	"github.com/fynca/fynca/pkg/tracing"
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -29,6 +29,7 @@ func run(clix *cli.Context) error {
 		TLSClientCertificate: clix.String("grpc-tls-client-cert"),
 		TLSClientKey:         clix.String("grpc-tls-client-key"),
 		APICORSDomain:        clix.String("api-cors-domain"),
+		ProxyEnabled:         clix.Bool("proxy"),
 		ListenAddr:           clix.String("listen-addr"),
 		PublicDir:            clix.String("public-dir"),
 		TraceEndpoint:        clix.String("trace-endpoint"),

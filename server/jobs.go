@@ -16,6 +16,7 @@ package server
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -83,7 +84,14 @@ func (s *Server) jobArchiveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte(resp.JobArchive.ArchiveUrl))
+	archiveUrl := resp.JobArchive.ArchiveUrl
+	if s.cfg.ProxyEnabled {
+		mediaUrl := base64.StdEncoding.EncodeToString([]byte(resp.JobArchive.ArchiveUrl))
+		archiveUrl = fmt.Sprintf("/proxy/%s?filename=%s.zip", mediaUrl, id)
+		logrus.Debugf("using proxy media url: %s", archiveUrl)
+	}
+
+	w.Write([]byte(archiveUrl))
 }
 
 func (s *Server) jobDeleteHandler(w http.ResponseWriter, r *http.Request) {
@@ -155,6 +163,16 @@ func (s *Server) jobLatestRenderHandler(w http.ResponseWriter, r *http.Request) 
 		logrus.WithError(err).Error("error getting latest render for job")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// if proxy is enabled override media url
+	if s.cfg.ProxyEnabled {
+		urlContent := base64.StdEncoding.EncodeToString([]byte(resp.Url))
+		mResp := &api.GetLatestRenderResponse{
+			Url:   fmt.Sprintf("/proxy/%s", urlContent),
+			Frame: resp.Frame,
+		}
+		resp = mResp
 	}
 
 	if err := s.marshaler().Marshal(w, resp); err != nil {
