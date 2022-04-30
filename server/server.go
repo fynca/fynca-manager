@@ -84,9 +84,6 @@ func (s *Server) Run() error {
 	authRouter.Methods("OPTIONS").HandlerFunc(apiOK)
 	authRouter.HandleFunc("/login", s.loginHandler).Methods("POST")
 
-	// proxy does not require auth as the proxied content is signed based on the media and expires
-	r.Handle("/proxy/{content:.*}", otelhttp.NewHandler(http.HandlerFunc(s.proxyMediaHandler), "proxy.media")).Methods("GET")
-
 	// api
 	apiRouter := r.PathPrefix("/api").Subrouter()
 	apiRouter.Use(withTokenMiddleware)

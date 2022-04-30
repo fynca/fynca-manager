@@ -29,7 +29,6 @@ func run(clix *cli.Context) error {
 		TLSClientCertificate: clix.String("grpc-tls-client-cert"),
 		TLSClientKey:         clix.String("grpc-tls-client-key"),
 		APICORSDomain:        clix.String("api-cors-domain"),
-		ProxyEnabled:         clix.Bool("proxy"),
 		ListenAddr:           clix.String("listen-addr"),
 		PublicDir:            clix.String("public-dir"),
 		TraceEndpoint:        clix.String("trace-endpoint"),
