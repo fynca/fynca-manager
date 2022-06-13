@@ -1,2 +1,2 @@
 # Fynca Manager
-[Fynca](https://github.com/ehazlett/fynca) Rendering Manager
+[Fynca](https://github.com/fynca/fynca) Rendering Management Application
