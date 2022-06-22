@@ -49,7 +49,7 @@ func main() {
 			Name:    "grpc-address",
 			Aliases: []string{"a"},
 			Usage:   "grpc address to fynca server",
-			Value:   "127.0.0.1:8080",
+			Value:   "127.0.0.1:7080",
 		},
 		&cli.StringFlag{
 			Name:  "grpc-tls-server-cert",
